@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block body %}
+<h1>{{ title }}</h1>
+
+<form method="post" novalidate>
+    {{ form.hidden_tag() }}
+
+    <p>
+        {{ form.title.label }} <br>
+        {{ form.title(size=80) }}
+        {% if form.title.errors %}
+            {% for error in form.title.errors %}
+                {{ error }}
+            {% endfor %}
+        {% endif %}
+        
+    </p>
+
+     <p>
+        {{ form.body.label }} <br>
+        {{ form.body(rows=35, cols=100) }}
+        {% if form.body.errors %}
+            {% for error in form.body.errors %}
+                {{ error }}
+            {% endfor %}
+        {% endif %}
+    </p>
+
+     <p>
+        {{ form.submit() }}
+    </p>
+
+</form>
+{% endblock %}

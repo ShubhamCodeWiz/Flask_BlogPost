@@ -1,7 +1,7 @@
 from flask import Flask, render_template, url_for, redirect, flash, request
 from forms import RegisterForm, LoginForm, PostForm
 from extensions import db
-from models import User, Post
+from models import User, Post, Tag
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 
 
@@ -32,7 +32,7 @@ def load_user(user_id):
 
 @app.route("/")
 def home():
-    posts = Post.query.all()
+    posts = Post.query.order_by(Post.created_at.desc()).all()
     return render_template("home.html", title="New Post", posts=posts)
 
 
@@ -106,34 +106,67 @@ def logout():
     return redirect(url_for("home"))
 
 
-@app.route("/create_post", methods = ["GET", "POST"])
+@app.route("/create_post", methods=["GET", "POST"])
 @login_required
 def create_post():
     form = PostForm()
 
-    if form.validate_on_submit(): 
-        # collecting data from flaskform
+    if form.validate_on_submit():
         title = form.title.data
-        body = form.body.data
-
-        # check does title exist
-        existing_title = Post.query.filter_by(title=title).first()
-
-        if existing_title:
-            return "beta title chori mat kar, apna utha"
         
-        # add to database
-        new_post = Post(title=title, body=body)
-        new_post.owner = current_user
+        # --- IMPROVEMENT 1: Better Error Handling ---
+        existing_title = Post.query.filter_by(title=title).first()
+        if existing_title:
+            flash("A post with this title already exists. Please choose a different title.", "danger")
+            # Re-render the form so the user doesn't lose their work
+            return render_template("post.html", title="Create Post", form=form)
+        # ----------------------------------------------
+
+        # If the title is unique, proceed with creating the post
+        new_post = Post(
+            title=title,
+            body=form.body.data,
+            owner=current_user
+        )
+
+        tag_string = form.tags.data
+        tag_names = [name.strip() for name in tag_string.split(',') if name.strip()]
+        
+        for name in tag_names:
+            existing_tag = Tag.query.filter_by(name=name).first()
+            if existing_tag:
+                tag = existing_tag
+            else:
+                tag = Tag(name=name)
+            new_post.tags.append(tag)
+
         db.session.add(new_post)
         db.session.commit()
 
-        flash(f"Successfully created post at {new_post.created_at}")
+        # --- IMPROVEMENT 2: Format the Timestamp ---
+        creation_time = new_post.created_at.strftime('%I:%M %p on %B %d, %Y')
+        flash(f"Post '{new_post.title}' created successfully at {creation_time}", "success")
+        # -----------------------------------------
 
         return redirect(url_for("home"))
 
-
     return render_template("post.html", title="Create Post", form=form)
+
+# view post
+@app.route("/post/<int:post_id>")
+def view_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    return render_template("view_post.html", post=post, title=post.title)
+
+
+@app.route('/tag/<string:tag_name>')
+def posts_by_tag(tag_name):
+    # Find the tag object from the database, or return a 404 error
+    tag = Tag.query.filter_by(name=tag_name).first_or_404()
+    
+    posts = tag.posts
+    
+    return render_template('home.html', posts=posts, tag_name=tag_name)
 
 
 

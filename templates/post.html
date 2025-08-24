@@ -12,7 +12,7 @@
 
     <p>
         {{ form.title.label }} <br>
-        {{ form.title(size=80) }}
+        {{ form.title(size=100) }}
         {% if form.title.errors %}
             {% for error in form.title.errors %}
                 {{ error }}
@@ -23,9 +23,20 @@
 
      <p>
         {{ form.body.label }} <br>
-        {{ form.body(rows=35, cols=100) }}
+        {{ form.body(rows=20, cols=80) }}
         {% if form.body.errors %}
             {% for error in form.body.errors %}
+                {{ error }}
+            {% endfor %}
+        {% endif %}
+    </p>
+
+    <p>
+        {{ form.tags.label }} <br>
+        {{ form.tags(size=70) }}<br>
+        <small>Please provide a comma-separated list of tags (e.g., flask, python, webdev)</small>
+        {% if form.tags.errors %}
+            {% for error in form.tags.errors %}
                 {{ error }}
             {% endfor %}
         {% endif %}

@@ -43,6 +43,8 @@ class LoginForm(FlaskForm):
 class PostForm(FlaskForm):
     title = StringField("Title", validators=[DataRequired(), Length(max=100)])
     body = TextAreaField("Body", validators=[DataRequired()])
+    # tags for the user to include in his post
+    tags = StringField("Tags (comma-separated karke likhna)")
     submit = SubmitField("Create Post")
 
 

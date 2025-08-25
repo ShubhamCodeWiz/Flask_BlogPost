@@ -1,7 +1,7 @@
-from flask import Flask, render_template, url_for, redirect, flash, request
-from forms import RegisterForm, LoginForm, PostForm
+from flask import Flask, render_template, url_for, redirect, flash, request, abort
+from forms import RegisterForm, LoginForm, PostForm, CommentForm
 from extensions import db
-from models import User, Post, Tag
+from models import User, Post, Tag, Comment
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 
 
@@ -153,10 +153,27 @@ def create_post():
     return render_template("post.html", title="Create Post", form=form)
 
 # view post
-@app.route("/post/<int:post_id>")
+@app.route("/post/<int:post_id>", methods=["GET", "POST"])
 def view_post(post_id):
     post = Post.query.get_or_404(post_id)
-    return render_template("view_post.html", post=post, title=post.title)
+    form = CommentForm()
+
+    # form on submit
+    if form.validate_on_submit():
+        new_comment = Comment(body=form.body.data,
+                            author=current_user,
+                            post = post,
+
+
+        )
+        db.session.add(new_comment)
+        db.session.commit()
+        flash("Your comment has been posted.", "success")
+        
+        # Redirect back to the same page to see the new comment
+        return redirect(url_for('view_post', post_id=post.id))
+
+    return render_template("view_post.html", post=post, title=post.title, form=form)
 
 
 @app.route('/tag/<string:tag_name>')
@@ -167,6 +184,110 @@ def posts_by_tag(tag_name):
     posts = tag.posts
     
     return render_template('home.html', posts=posts, tag_name=tag_name)
+
+
+@app.route("/post/<int:post_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    
+    if post.owner != current_user:
+        abort(403)
+        
+    form = PostForm()
+    
+    if form.validate_on_submit():
+        # Update the post's simple fields
+        post.title = form.title.data
+        post.body = form.body.data
+        
+        # --- TAG UPDATE LOGIC ---
+        # 1. Clear the existing tags from the post
+        post.tags.clear()
+        
+        # 2. Run the same tag processing logic as in create_post
+        tag_string = form.tags.data
+        tag_names = [name.strip() for name in tag_string.split(',') if name.strip()]
+        
+        for name in tag_names:
+            existing_tag = Tag.query.filter_by(name=name).first()
+            if existing_tag:
+                tag = existing_tag
+            else:
+                tag = Tag(name=name)
+            post.tags.append(tag)
+        # --- END OF TAG UPDATE LOGIC ---
+            
+        db.session.commit()
+        flash("Your post has been updated!", "success")
+        return redirect(url_for('view_post', post_id=post.id))
+        
+    elif request.method == 'GET':
+        # Pre-populate the form with existing data
+        form.title.data = post.title
+        form.body.data = post.body
+        form.tags.data = ", ".join([tag.name for tag in post.tags])
+        
+    return render_template('post.html', title='Edit Post', form=form)
+
+     
+    
+
+# delete post
+@app.route("/post/<int:post_id>/delete", methods = ["POST"])
+@login_required
+def delete_post(post_id):
+    # get the post from the db.
+    post = Post.query.get_or_404(post_id)
+
+    # if it is not the owner
+    if post.owner != current_user:
+        abort(403)
+
+    db.session.delete(post)
+    db.session.commit()
+    
+    flash("Your post has been deleted.", "success")
+    return redirect(url_for('home'))
+
+
+@app.route('/follow/<string:username>')
+@login_required
+def follow(username):
+    user_to_follow = User.query.filter_by(username=username).first_or_404()
+
+    if user_to_follow == current_user:
+        flash("You cannot follow yourself!", "warning")
+        return redirect(url_for('home'))
+    
+    current_user.following.append(user_to_follow)
+    db.session.commit()
+    flash(f"You are now following {username}.", "success")
+    return redirect(request.referrer or url_for('home'))
+
+
+
+@app.route('/unfollow/<string:username>')
+@login_required
+def unfollow(username):
+    user_to_unfollow = User.query.filter_by(username=username).first_or_404()
+    if user_to_unfollow == current_user:
+        flash("You cannot unfollow yourself!", "warning")
+        return redirect(url_for('home'))
+        
+    current_user.following.remove(user_to_unfollow)
+    db.session.commit()
+    flash(f"You have unfollowed {username}.", "info")
+    return redirect(request.referrer or url_for('home'))
+
+
+# user profile
+@app.route("/user/<string:username>")
+def user_profile(username):
+    # get the user
+    user = User.query.filter_by(username=username).first_or_404()
+
+    return render_template("profile.html", user=user)
 
 
 

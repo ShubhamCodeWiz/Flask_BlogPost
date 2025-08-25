@@ -4,21 +4,90 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
-        {% block title %}
-        {% endblock %}
+        {% block title %}Flask Blog{% endblock %}
     </title>
+    <!-- A little bit of minimal styling to structure the navbar -->
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+            margin: 0; 
+            color: #333;
+        }
+        /* Main navbar container */
+        nav {
+            background-color: #f8f9fa;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #dee2e6;
+            display: flex; /* This is the key: enables Flexbox layout */
+            justify-content: space-between; /* Pushes left and right sides apart */
+            align-items: center; /* Vertically aligns items in the middle */
+        }
+        /* Styling for links */
+        nav a {
+            text-decoration: none;
+            color: #007bff;
+            padding: 0.5rem;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        /* Containers for left and right groups of links */
+        .nav-left, .nav-right {
+            display: flex; /* Makes items inside these divs also horizontal */
+            align-items: center;
+        }
+        /* Add some space between links */
+        .nav-right > * {
+            margin-left: 1rem;
+        }
+        /* Main content area */
+        .content {
+            padding: 1rem;
+        }
+        /* Styling for flashed messages */
+        .alert { padding: 1rem; margin: 1rem 0; border-radius: 5px; }
+        .alert-success { background-color: #d4edda; color: #155724; }
+        .alert-danger { background-color: #f8d7da; color: #721c24; }
+        .alert-info { background-color: #d1ecf1; color: #0c5460; }
+        .alert-warning { background-color: #fff3cd; color: #856404; }
+    </style>
 </head>
 <body>
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <ul>
-            {% for message in messages %}
-                <li>{{ message }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
-    {% endwith %}
-    {% block body %}
-    {% endblock %}
+    <nav>
+        <div class="nav-left">
+            <a href="{{ url_for('home') }}"><strong>My Blog</strong></a>
+            <a href="{{ url_for('home') }}">Home</a>
+        </div>
+        <div class="nav-right">
+            {% if current_user.is_authenticated %}
+                <!-- Links to show if the user IS logged in -->
+                <a href="{{ url_for('create_post') }}">Create Post</a>
+                <a href="{{ url_for('user_profile', username=current_user.username) }}">My Profile</a>
+                <span>Welcome, {{ current_user.username }}</span>
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <!-- Links to show if the user IS NOT logged in -->
+                <a href="{{ url_for('login') }}">Login</a>
+                <a href="{{ url_for('register') }}">Register</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="content">
+        <!-- Flashed messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category or 'info' }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Main page content -->
+        {% block body %}
+        {% endblock %}
+    </div>
 </body>
 </html>

@@ -31,6 +31,12 @@ class User(db.Model, UserMixin):
     # create a new attribute (posts) -> one to many
     posts = db.relationship("Post", back_populates="owner", cascade="all, delete-orphan")
 
+    # comments new attribute
+    comments = db.relationship("Comment", back_populates="")
+
+     # Get all comments written by this user
+    comments = db.relationship('Comment', back_populates='author')
+
     # create a new attribute (followers) -> self-referential many to many
     followers = db.relationship(
         "User",
@@ -82,6 +88,12 @@ class Post(db.Model):
     tags = db.relationship("Tag", secondary="post_tags", back_populates="posts")
 
 
+    # Get all comments for this post.
+    # When a post is deleted, all its comments will be deleted too.
+    comments = db.relationship('Comment', back_populates='post', cascade='all, delete-orphan')
+
+
+
     def __repr__(self):
         return f"<Post({self.title}, {self.created_at})"
     
@@ -105,6 +117,13 @@ class Comment(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False) #FK
     post_id = db.Column(db.Integer, db.ForeignKey("posts.id"), nullable=False) #FK
+
+
+    # ADD THESE TWO RELATIONSHIPS:
+    # Get the User object for the author of this comment
+    author = db.relationship('User', back_populates='comments')
+    # Get the Post object this comment belongs to
+    post = db.relationship('Post', back_populates='comments')
 
     def __repr__(self):
         return f"<Comment({self.body})"
